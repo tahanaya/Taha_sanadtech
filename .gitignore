@@ -1,0 +1,13 @@
+
+node_modules/
+.env
+
+
+backend/data/*.txt
+backend/data/*.csv
+backend/data/*.json
+
+
+dist/
+build/
+.DS_Store
