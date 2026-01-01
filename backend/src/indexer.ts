@@ -40,8 +40,14 @@ export class FileIndexer {
             }
 
             // 2. Map the alphabet for the side menu
-            const firstLetter = line[0]?.toUpperCase();
-            if (firstLetter && this.alphabetMap[firstLetter] === undefined) {
+            // Strip common titles (Mr., Mrs., etc) to index by actual name
+            let sortName = line.trim();
+            const prefixes = /^(Mr\.|Mrs\.|Ms\.|Miss|Dr\.|Prof\.|Rev\.)\s+/i;
+            sortName = sortName.replace(prefixes, '');
+            const firstLetter = sortName[0]?.toUpperCase();
+
+            // Only index valid A-Z letters
+            if (firstLetter && /^[A-Z]$/.test(firstLetter) && this.alphabetMap[firstLetter] === undefined) {
                 this.alphabetMap[firstLetter] = lineCount;
             }
 

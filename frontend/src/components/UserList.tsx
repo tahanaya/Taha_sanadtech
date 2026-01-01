@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useCallback, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 // @ts-ignore
 import { FixedSizeList as List } from 'react-window';
 // @ts-ignore
@@ -17,6 +17,7 @@ export interface UserListHandle {
 
 export const UserList = forwardRef<UserListHandle, UserListProps>(({ users, totalLines, loadMore, loading }, ref) => {
     const listRef = useRef<any>(null);
+    const visibleRangeRef = useRef<{ start: number, stop: number } | null>(null);
 
     useImperativeHandle(ref, () => ({
         scrollToItem: (index: number) => {
@@ -24,27 +25,38 @@ export const UserList = forwardRef<UserListHandle, UserListProps>(({ users, tota
         }
     }));
 
-    const onItemsRendered = useCallback(({ visibleStartIndex, visibleStopIndex }: any) => {
-        // Simple check: if the first or last visible item is missing, load the range.
-        // We can optimize to check specifically which chunk is missing.
+    const checkAndLoad = useCallback((start: number, stop: number) => {
         let missingStart = -1;
         let missingEnd = -1;
 
-        for (let i = visibleStartIndex; i <= visibleStopIndex; i++) {
+        for (let i = start; i <= stop; i++) {
             if (!users[i]) {
                 if (missingStart === -1) missingStart = i;
                 missingEnd = i;
             }
         }
 
-        if (missingStart !== -1 && !loading) {
-            // Buffer the request a bit
+        if (missingStart !== -1) {
             const buffer = 20;
-            const start = Math.max(0, missingStart - buffer);
-            const end = Math.min(totalLines, missingEnd + buffer);
-            loadMore(start, end);
+            const reqStart = Math.max(0, missingStart - buffer);
+            const reqEnd = Math.min(totalLines, missingEnd + buffer);
+            loadMore(reqStart, reqEnd);
         }
-    }, [users, totalLines, loading, loadMore]);
+    }, [users, totalLines, loadMore]);
+
+    const onItemsRendered = useCallback(({ visibleStartIndex, visibleStopIndex }: any) => {
+        visibleRangeRef.current = { start: visibleStartIndex, stop: visibleStopIndex };
+        if (!loading) {
+            checkAndLoad(visibleStartIndex, visibleStopIndex);
+        }
+    }, [loading, checkAndLoad]);
+
+    // Retry loading when loading finishes, if we still have gaps
+    useEffect(() => {
+        if (!loading && visibleRangeRef.current) {
+            checkAndLoad(visibleRangeRef.current.start, visibleRangeRef.current.stop);
+        }
+    }, [loading, checkAndLoad]);
 
     const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
         const user = users[index];
@@ -58,9 +70,9 @@ export const UserList = forwardRef<UserListHandle, UserListProps>(({ users, tota
         }
 
         return (
-            <div style={style} className={`px-4 py-2 border-b border-gray-800 flex items-center ${index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-950'} text-gray-100 hover:bg-gray-800 transition-colors`}>
-                <span className="mr-4 text-gray-500 w-16 text-right font-mono text-sm opacity-50">#{index + 1}</span>
-                <span className="font-medium tracking-wide">{user}</span>
+            <div style={style} className={`px-2 border-b border-gray-800 flex items-center ${index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-950'} text-gray-100 hover:bg-gray-800 transition-colors`}>
+                <span className="mr-3 text-gray-600 w-12 text-right font-mono text-xs opacity-50">#{index + 1}</span>
+                <span className="font-medium tracking-wide text-sm truncate">{user}</span>
             </div>
         );
     };
@@ -74,7 +86,7 @@ export const UserList = forwardRef<UserListHandle, UserListProps>(({ users, tota
                         height={height}
                         width={width}
                         itemCount={totalLines}
-                        itemSize={50}
+                        itemSize={25}
                         onItemsRendered={onItemsRendered}
                     >
                         {Row}

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { UserList, type UserListHandle } from './components/UserList';
+import { LargeUserList as UserList, type UserListHandle } from './components/LargeUserList';
 import { AlphabetSidebar } from './components/AlphabetSidebar';
 import './index.css';
 
@@ -69,10 +69,10 @@ function App() {
       <header className="p-4 bg-gray-900 border-b border-gray-800 shadow-md z-10 flex justify-between items-center">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-blue-400">
-            SanadTech <span className="text-white">User Directory</span>
+            SanadTech <span className="text-white">10M User Directory</span>
           </h1>
           <p className="text-xs text-gray-500 mt-1">
-            Build v1.0 • Total Records: {totalLines.toLocaleString()}
+            Build v2.0 • Total Records: {totalLines.toLocaleString()}
           </p>
         </div>
       </header>
