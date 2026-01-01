@@ -1,6 +1,6 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
 // @ts-ignore
-import { List } from 'react-window';
+import { List, useListRef } from 'react-window';
 // @ts-ignore
 import { AutoSizer } from 'react-virtualized-auto-sizer';
 
@@ -11,7 +11,18 @@ interface UserListProps {
     loading: boolean;
 }
 
-export const UserList: React.FC<UserListProps> = ({ users, hasMore, loadMore, loading }) => {
+export interface UserListHandle {
+    scrollToItem: (index: number) => void;
+}
+
+export const UserList = forwardRef<UserListHandle, UserListProps>(({ users, hasMore, loadMore, loading }, ref) => {
+    const listRef = useRef<any>(null);
+
+    useImperativeHandle(ref, () => ({
+        scrollToItem: (index: number) => {
+            listRef.current?.scrollToItem(index, 'start');
+        }
+    }));
 
     const onItemsRendered = useCallback(({ visibleStopIndex }: any) => {
         if (hasMore && !loading && visibleStopIndex >= users.length - 10) {
@@ -39,6 +50,7 @@ export const UserList: React.FC<UserListProps> = ({ users, hasMore, loadMore, lo
             <AutoSizer>
                 {({ height, width }: { height: number; width: number }) => (
                     <List
+                        ref={listRef}
                         height={height}
                         width={width}
                         itemCount={itemCount}
@@ -51,4 +63,6 @@ export const UserList: React.FC<UserListProps> = ({ users, hasMore, loadMore, lo
             </AutoSizer>
         </div>
     );
-};
+});
+
+UserList.displayName = 'UserList';

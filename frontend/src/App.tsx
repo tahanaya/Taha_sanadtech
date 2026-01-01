@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { UserList } from './components/UserList';
+import { UserList, type UserListHandle } from './components/UserList';
+import { AlphabetSidebar } from './components/AlphabetSidebar';
 import './index.css';
 
 const API_URL = 'http://localhost:3000';
@@ -10,6 +11,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [totalLines, setTotalLines] = useState(0);
+  const userListRef = useRef<UserListHandle>(null);
 
   const fetchUsers = useCallback(async (skip: number, limit: number) => {
     try {
@@ -21,13 +23,7 @@ function App() {
       const newUsers = response.data.users;
       const meta = response.data.meta;
 
-      setUsers(prev => {
-        // Prevent duplicates if strict mode causes double fetch, though using skip logic is safer.
-        // Simple append for now.
-        // Ideally we should merge based on index if we had it, but simple append works for infinite scroll down.
-        // Actually, to be safe, let's just append.
-        return [...prev, ...newUsers];
-      });
+      setUsers(prev => [...prev, ...newUsers]);
 
       setTotalLines(meta.totalLines);
       if (skip + newUsers.length >= meta.totalLines) {
@@ -40,7 +36,6 @@ function App() {
     }
   }, []);
 
-  // Initial Load
   useEffect(() => {
     fetchUsers(0, 50);
   }, []);
@@ -49,6 +44,15 @@ function App() {
     const limit = end - start;
     fetchUsers(start, limit);
   }, [fetchUsers]);
+
+  const handleJump = useCallback((index: number) => {
+    // Ensure we have enough data loaded before jumping
+    if (index >= users.length) {
+      // Load from that index
+      fetchUsers(index, 100);
+    }
+    userListRef.current?.scrollToItem(index);
+  }, [users.length, fetchUsers]);
 
   return (
     <div className="flex flex-col h-screen bg-gray-950 text-gray-100 font-sans">
@@ -61,14 +65,18 @@ function App() {
         </p>
       </header>
 
-      <main className="flex-1 overflow-hidden relative">
-        <UserList
-          users={users}
-          hasMore={hasMore}
-          loadMore={loadMore}
-          loading={loading}
-        />
-      </main>
+      <div className="flex flex-1 overflow-hidden">
+        <AlphabetSidebar onJump={handleJump} />
+        <main className="flex-1 overflow-hidden relative">
+          <UserList
+            ref={userListRef}
+            users={users}
+            hasMore={hasMore}
+            loadMore={loadMore}
+            loading={loading}
+          />
+        </main>
+      </div>
     </div>
   );
 }
