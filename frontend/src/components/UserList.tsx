@@ -1,8 +1,8 @@
 import React, { useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
 // @ts-ignore
-import { List, useListRef } from 'react-window';
+import { FixedSizeList as List } from 'react-window';
 // @ts-ignore
-import { AutoSizer } from 'react-virtualized-auto-sizer';
+import AutoSizer from 'react-virtualized-auto-sizer';
 
 interface UserListProps {
     users: string[];
@@ -46,7 +46,7 @@ export const UserList = forwardRef<UserListHandle, UserListProps>(({ users, hasM
     const itemCount = hasMore ? users.length + 1 : users.length;
 
     return (
-        <div style={{ flex: '1 1 auto', height: '100%' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
             <AutoSizer>
                 {({ height, width }: { height: number; width: number }) => (
                     <List
