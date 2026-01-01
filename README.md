@@ -21,10 +21,10 @@ The system is containerized with Docker and consists of two main microservices:
 
 ```mermaid
 graph LR
-    User[User Browser]
-    Frontend[Frontend (React + Vite)]
-    Backend[Backend (Node.js Stream)]
-    File[(Users.txt 500MB+)]
+    User["User Browser"]
+    Frontend["Frontend (React + Vite)"]
+    Backend["Backend (Node.js Stream)"]
+    File[("Users.txt 500MB+")]
 
     User -- "Scrolls / Clicks 'Z'" --> Frontend
     Frontend -- "GET /users?skip=9000000" --> Backend
@@ -111,6 +111,4 @@ npm run dev
 ## 👤 Author
 
 **Taha**
-*R&D Fullstack Engineer Candidate*
 
-Built with ❤️ for **SanadTech**.
