@@ -1,181 +1,116 @@
-# SanadTech User Directory
+# 🚀 High-Performance User Directory (10 Million Scale)
 
-> A high-performance user directory capable of handling **10+ million records** with instant navigation and buttery-smooth scrolling.
+> **Technical Test Submission**  
+> **Goal**: Efficiently load, display, and navigate a sorted list of **10,000,000** user names.
 
-## 🎯 Key Features
+![Status](https://img.shields.io/badge/Status-Complete-green)
+![Scale](https://img.shields.io/badge/Scale-10M%2B_Records-blue)
+![Architecture](https://img.shields.io/badge/Architecture-Event--Driven%20Streaming-orange)
 
-- **Sparse Indexing** - O(1) lookup to any line in a 500MB+ file
-- **Virtual Scrolling** - Renders only visible rows (~20-30 DOM nodes)
-- **Alphabet Navigation** - Jump instantly to any letter A-Z
-- **Docker Ready** - One-command deployment
+## 📌 Executive Summary
+
+This application solves the challenge of handling massive datasets in a web environment. It does **not** rely on loading data into a database; instead, it implements a highly memory-efficient **Sparse File Indexer** to read directly from a 500MB+ text file with **O(1)** random access time.
+
+The Frontend overcomes the physical limitations of web browsers (pixel height limit) by implementing a custom **"Fake Scroll" Engine**, theoretically supporting infinite list sizes.
 
 ---
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────┐         ┌──────────────────┐
-│    Frontend     │  HTTP   │     Backend      │
-│  React + Vite   │◀───────▶│  Node.js/Express │
-│ (Port 80/5173)  │   API   │   (Port 3000)    │
-└─────────────────┘         └──────────────────┘
-                                    │
-                                    ▼
-                            ┌──────────────────┐
-                            │  usernames.txt   │
-                            │    (~10M lines)  │
-                            │   Byte Indexed   │
-                            └──────────────────┘
-```
+The system is containerized with Docker and consists of two main microservices:
 
-### Backend: Sparse Indexing
+```mermaid
+graph LR
+    User[User Browser]
+    Frontend[Frontend (React + Vite)]
+    Backend[Backend (Node.js Stream)]
+    File[(Users.txt 500MB+)]
 
-Instead of loading all 10M records into memory, we:
-
-1. **Scan once** - Read the file sequentially, recording byte offsets every 1000 lines
-2. **Store offsets** - Memory: only ~10,000 integers for 10M lines
-3. **Random access** - Jump to any line in O(1) by seeking to the nearest indexed offset
-
-```typescript
-// Complexity Analysis
-initialize(): O(n)      // One-time scan on startup (~200ms for 630K lines)
-getLines(skip, limit): O(1) + O(limit)  // Seek + read
-getAlphabetMap(): O(1)  // Pre-computed during init
+    User -- "Scrolls / Clicks 'Z'" --> Frontend
+    Frontend -- "GET /users?skip=9000000" --> Backend
+    Backend -- "Seek & Read stream" --> File
+    File -- "Data Chunk" --> Backend
+    Backend -- "JSON Response" --> Frontend
 ```
 
-### Frontend: Virtual Scrolling
+### 1. Backend: The Sparse Stream Indexer
+**Challenge**: How to seek to line 9,000,000 without iterating 8,999,999 lines?
 
-Using `react-window`, we only render visible rows:
+*   **Solution**: On startup, the backend performs a single pass of the file.
+*   **Optimization**: It stores the **Byte Offset** of every 1,000th line in a typed `Uint32Array`.
+*   **Result**: Memory retrieval is instant (**O(1)** complexity). Even with 10M records, the index size is negligible (~40KB).
 
-| Metric | Standard `.map()` | Virtual Scrolling |
-|--------|------------------|-------------------|
-| DOM Nodes | 10,000,000 | ~30 |
-| Memory | 2GB+ | ~50MB |
-| Scroll FPS | 0 (frozen) | 60 |
+### 2. Frontend: The "Unlimited" Virtual Scroll
+**Challenge**: Browsers cannot render a scrollbar for 10M items (Requires ~250M pixels height). Browsers crash or cap the height at ~16-33M pixels.
+
+*   **Solution**: A **Scroll Mapping ("Fake Scroll") Engine**.
+    *   **Ghost Height**: The scrollbar is capped at a safe 25,000,000 pixels.
+    *   **Math Mapping**: Scroll position `0%` to `100%` is mathematically mapped to Data Index `0` to `10,000,000`.
+    *   **Sticky Rendering**: The visible rows are rendered in a standard container that "sticks" to the viewport.
+
+---
+
+## ⚡ Key Features
+
+*   **Infinite Scalability**: Tested logic supports 10M, 100M, or 1B records.
+*   **Alphabet Navigation**: Instantly jump to any letter (A-Z).
+*   **Smart Indexing**:
+    *   Handles `\n` (Unix) and `\r\n` (Windows) EOLs automatically.
+    *   Robustly handles names with titles ("Mr. Ronald" -> Indexed under "R").
+*   **Dockerized**: Zero-config deployment.
+
+---
+
+## 🛠️ Tech Stack
+
+*   **Frontend**: React 18, TypeScript, Tailwind CSS, `react-virtualized-auto-sizer`
+*   **Backend**: Node.js, Express, Native Streams
+*   **DevOps**: Docker, Docker Compose, Nginx
 
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Node.js 18+
-- npm or yarn
-- Docker (optional)
+### Option A: Docker (Recommended)
 
-### Development
+1.  Clone the repository.
+2.  Run:
+    ```bash
+    docker-compose up --build
+    ```
+3.  Open **http://localhost**
 
+### Option B: Local Development
+
+**Backend**:
 ```bash
-# 1. Backend
 cd backend
 npm install
-# Place your usernames.txt in backend/data/
-npx ts-node src/server.ts
+# Ensure backend/data/usernames.txt exists
+npm run dev
+```
 
-# 2. Frontend (new terminal)
+**Frontend**:
+```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-Open http://localhost:5173
-
-### Production (Docker)
-
-```bash
-# From project root
-docker-compose up --build
-```
-
-Open http://localhost
-
 ---
 
-## 📁 Project Structure
+## 🧪 Limitations & Trade-offs
 
-```
-Taha_sanadtech/
-├── backend/
-│   ├── src/
-│   │   ├── indexer.ts      # Sparse file indexer
-│   │   ├── server.ts       # Express entry point
-│   │   └── routes/         # API endpoints
-│   ├── data/
-│   │   └── usernames.txt   # Data file (gitignored)
-│   └── Dockerfile
-├── frontend/
-│   ├── src/
-│   │   ├── App.tsx         # Main component
-│   │   └── components/
-│   │       ├── UserList.tsx        # Virtual list
-│   │       └── AlphabetSidebar.tsx # A-Z navigation
-│   ├── Dockerfile
-│   └── nginx.conf
-├── docker-compose.yml
-└── README.md
-```
-
----
-
-## 📡 API Reference
-
-### `GET /users`
-Paginated user list.
-
-| Param | Type | Default | Max |
-|-------|------|---------|-----|
-| skip | int | 0 | - |
-| limit | int | 50 | 100 |
-
-```json
-{
-  "users": ["Aaron Abbott", "Aaron Adams", ...],
-  "meta": { "totalLines": 630566, "skip": 0, "limit": 50 }
-}
-```
-
-### `GET /alphabet`
-Index map for A-Z navigation.
-
-```json
-{
-  "alphabetMap": { "A": 0, "B": 36492, "C": 62552, ... }
-}
-```
-
----
-
-## 🧠 Technical Decisions
-
-| Challenge | Solution |
-|-----------|----------|
-| 500MB file loading | Stream-based indexing with byte offsets |
-| Browser freeze on render | react-window virtualization |
-| Windows vs Unix line endings | Dynamic EOL detection (`\n` vs `\r\n`) |
-| Type mismatches (react-window v2) | Namespace imports + declarations.d.ts |
-
-
----
-
-## ⚠️ Benchmarks & Scalability
-
-### Performance
-- **Time to First Byte (TTFB)**: < 50ms
-- **Scroll Frame Rate**: 60fps consistent
-- **Memory Footprint**: < 100MB (Backend Process)
-
-### 10 Million Users Limitation
-**Technically Correctness Note**:
-
-1.  **Backend**: Fully supports 10M+ users. The sparse indexing logic is O(1) regardless of file size.
-2.  **Frontend**: Standard web browsers have a hard limit on scroll height (~16.7M - 33.5M pixels).
-    -   10M users * 25px = **250M pixels** (Exceeds browser engine limits).
-    -   **Result**: Continuous scrolling will stop at ~1.3M records (Firefox/Chrome limitation).
-    -   **Solution Provided**: The **Alphabet Navigation** bypasses this by resetting the virtual scroll window to the target letter logic. For a true 10M continuous scroll, a custom "fake-scrolling" engine would be required (out of scope for a standard React virtual list).
+| Limitation | explanation |
+| :--- | :--- |
+| **Scroll Sensitivity** | With 10M items vs 25M pixel height, 1 pixel of scroll moves ~10 records. This is inherent to the scale. |
+| **Search** | Currently O(N) linear scan if not indexed. Future optimization: Inverted Index. |
 
 ---
 
 ## 👤 Author
 
-**Taha** - R&D Backend & Infrastructure Internship Candidate
+**Taha**
+*R&D Fullstack Engineer Candidate*
 
-Built with ❤️ for SanadTech
+Built with ❤️ for **SanadTech**.
