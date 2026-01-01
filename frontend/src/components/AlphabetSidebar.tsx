@@ -1,22 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React from 'react';
+import { useAlphabet } from '../hooks/useAlphabet';
 
 interface AlphabetSidebarProps {
     onJump: (index: number) => void;
 }
 
 export const AlphabetSidebar: React.FC<AlphabetSidebarProps> = ({ onJump }) => {
-    const [alphabetMap, setAlphabetMap] = useState<Record<string, number>>({});
-    const [loading, setLoading] = useState(true);
+    const { alphabetMap, loading } = useAlphabet();
 
-    useEffect(() => {
-        axios.get('http://localhost:3000/alphabet')
-            .then(res => {
-                setAlphabetMap(res.data.alphabetMap);
-                setLoading(false);
-            })
-            .catch(err => console.error(err));
-    }, []);
 
     if (loading) return null;
 

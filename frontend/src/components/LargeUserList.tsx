@@ -12,10 +12,9 @@ export interface UserListHandle {
     scrollToItem: (index: number) => void;
 }
 
-// BROWSER LIMIT: Chrome/Safari limit is ~33M, Firefox ~17M.
-// We use a safe threshold.
-// 630k lines * 25px = 15.75M px. This fits in Firefox Native.
-// So we set threshold > 15.75M to allow native scroll for sample data.
+// Browser scroll height limits vary (Chrome/Safari ~33M, Firefox ~17M).
+// We cap the physical scroll height to a safe threshold (25M px) to avoid issues
+// and implement a virtual "scroll mapping" for datasets larger than that.
 const MAX_SCROLL_HEIGHT = 25_000_000;
 const ITEM_HEIGHT = 25;
 

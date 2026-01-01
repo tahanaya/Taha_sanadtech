@@ -2,9 +2,8 @@ import fs from 'fs';
 import readline from 'readline';
 
 /**
- * The Sparse Indexer
- * Instead of loading 10M names, we store the "Byte Position" 
- * of every 1000th name.
+ * Efficiently indexes the file by storing byte offsets for every Nth line.
+ * This allows O(1) random access without loading the massive file into memory.
  */
 export class FileIndexer {
     private filePath: string;
@@ -20,7 +19,7 @@ export class FileIndexer {
     async initialize() {
         console.time('Indexing Time');
 
-        // 0. Detect EOL char to ensure accurate byte offsets
+        // Detect EOL char (CRLF vs LF) to ensure accurate byte offsets
         const eolLength = await this.determineEOL();
         console.log(`Detected EOL length: ${eolLength}`);
 
@@ -34,13 +33,13 @@ export class FileIndexer {
         let lineCount = 0;
 
         for await (const line of rl) {
-            // 1. Store the byte offset every 1000 lines
+            // Store the byte offset every chunk
             if (lineCount % this.CHUNK_SIZE === 0) {
                 this.lineOffsets.push(currentByteOffset);
             }
 
-            // 2. Map the alphabet for the side menu
-            // Strip common titles (Mr., Mrs., etc) to index by actual name
+            // Map the alphabet for the side menu.
+            // Strip common titles to index by the actual name (e.g. "Mr. X" -> "X")
             let sortName = line.trim();
             const prefixes = /^(Mr\.|Mrs\.|Ms\.|Miss|Dr\.|Prof\.|Rev\.)\s+/i;
             sortName = sortName.replace(prefixes, '');

@@ -1,5 +1,5 @@
 
-// Use IIFE
+
 (async () => {
     try {
         console.log('Fetching alphabet map...');

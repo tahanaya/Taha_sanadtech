@@ -4,10 +4,9 @@
 > **Goal**: Efficiently load, display, and navigate a sorted list of **10,000,000** user names.
 
 ![Status](https://img.shields.io/badge/Status-Complete-green)
-![Scale](https://img.shields.io/badge/Scale-10M%2B_Records-blue)
-![Architecture](https://img.shields.io/badge/Architecture-Event--Driven%20Streaming-orange)
 
-## 📌 Executive Summary
+
+## Overview
 
 This application solves the challenge of handling massive datasets in a web environment. It does **not** rely on loading data into a database; instead, it implements a highly memory-efficient **Sparse File Indexer** to read directly from a 500MB+ text file with **O(1)** random access time.
 

@@ -1,63 +1,15 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import axios from 'axios';
+import { useCallback, useRef } from 'react';
 import { LargeUserList as UserList, type UserListHandle } from './components/LargeUserList';
 import { AlphabetSidebar } from './components/AlphabetSidebar';
+import { useUsers } from './hooks/useUsers';
 import './index.css';
 
-const API_URL = 'http://localhost:3000';
+
 
 function App() {
-  // Store users as a sparse map: index -> username
-  const [users, setUsers] = useState<Record<number, string>>({});
-  const [loading, setLoading] = useState(false);
-  const [totalLines, setTotalLines] = useState(0); // Initialize with 0, will update on first fetch
+  // Use the custom hook for user data management
+  const { users, totalLines, loading, loadMore } = useUsers();
   const userListRef = useRef<UserListHandle>(null);
-  const loadingRef = useRef(false); // Ref for immediate check in callbacks
-
-  const fetchUsers = useCallback(async (skip: number, limit: number) => {
-    if (loadingRef.current) return;
-
-    try {
-      loadingRef.current = true;
-      setLoading(true);
-
-      const response = await axios.get(`${API_URL}/users`, {
-        params: { skip, limit }
-      });
-
-      const newUsersList = response.data.users as string[];
-      const meta = response.data.meta;
-
-      setTotalLines(meta.totalLines);
-
-      setUsers(prev => {
-        const next = { ...prev };
-        newUsersList.forEach((user, i) => {
-          next[skip + i] = user;
-        });
-        return next;
-      });
-
-    } catch (error) {
-      console.error('Failed to fetch users', error);
-    } finally {
-      loadingRef.current = false;
-      setLoading(false);
-    }
-  }, []);
-
-  // Initial Load
-  useEffect(() => {
-    fetchUsers(0, 50);
-  }, []);
-
-  const loadMore = useCallback((start: number, end: number) => {
-    // Ensure we don't fetch beyond totalLines if we know it
-    if (totalLines > 0 && start >= totalLines) return;
-
-    const limit = end - start;
-    fetchUsers(start, limit);
-  }, [fetchUsers, totalLines]);
 
   const handleJump = useCallback((index: number) => {
     userListRef.current?.scrollToItem(index);
