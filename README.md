@@ -15,22 +15,11 @@ The Frontend overcomes the physical limitations of web browsers (pixel height li
 
 ---
 
-## 🏗️ Architecture
-
-The system is containerized with Docker and consists of two main microservices:
-
-```mermaid
-graph LR
-    User["User Browser"]
-    Frontend["Frontend (React + Vite)"]
-    Backend["Backend (Node.js Stream)"]
-    File[("Users.txt 500MB+")]
-
-    User -- "Scrolls / Clicks 'Z'" --> Frontend
-    Frontend -- "GET /users?skip=9000000" --> Backend
-    Backend -- "Seek & Read stream" --> File
-    File -- "Data Chunk" --> Backend
-    Backend -- "JSON Response" --> Frontend
+```text
++----------------+       +-------------------------+       +------------------------+       +---------------------+
+|  User Browser  | <---> | Frontend (React + Vite) | <---> | Backend (Node.js API)  | <---> | Users.txt (500MB+)  |
++----------------+       +-------------------------+       | (Sparse Byte Indexer)  |       | (Indexed Stream)    |
+                                                           +------------------------+       +---------------------+
 ```
 
 ### 1. Backend: The Sparse Stream Indexer
@@ -99,14 +88,6 @@ npm run dev
 
 ---
 
-## 🧪 Limitations & Trade-offs
-
-| Limitation | explanation |
-| :--- | :--- |
-| **Scroll Sensitivity** | With 10M items vs 25M pixel height, 1 pixel of scroll moves ~10 records. This is inherent to the scale. |
-| **Search** | Currently O(N) linear scan if not indexed. Future optimization: Inverted Index. |
-
----
 
 ## 👤 Author
 
