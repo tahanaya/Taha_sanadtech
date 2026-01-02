@@ -1,97 +1,183 @@
-# 🚀 High-Performance User Directory (10 Million Scale)
+10 Million User Directory (High-Performance Stream Indexer)
 
-> **Technical Test Submission**  
-> **Goal**: Efficiently load, display, and navigate a sorted list of **10,000,000** user names.
+A full-stack web application engineered to index, navigate, and display a dataset of 10 million records with $O(1)$ access time and constant memory usage.
 
-![Status](https://img.shields.io/badge/Status-Complete-green)
+📖 Overview
 
-## Overview
+This project was built to solve a specific performance challenge: "How do you display a list of 10 million sorted usernames in a browser without crashing the server or freezing the client?"
 
-This application solves the challenge of handling massive datasets in a web environment. It does **not** rely on loading data into a database; instead, it implements a highly memory-efficient **Sparse File Indexer** to read directly from a 500MB+ text file with **O(1)** random access time.
+Loading a 10M-line text file (~150MB+) into memory as an Array is inefficient and unscalable. This solution implements a Custom File Indexer that treats the flat text file as a random-access database using byte offsets and Node.js Streams.
 
----
+Key Capabilities
 
-## 🏛️ Architecture & Algorithm
+Zero-Lag Navigation: Jump instantly to any letter (A-Z) regardless of file size.
 
-### 1. Backend: Sparse Byte Indexing (The "Phonebook" Algorithm)
-Instead of loading the entire 500MB file into RAM, the backend "learns" the structure of the file once on startup.
+Infinite Scrolling: Data is fetched in small chunks (50 items) as the user scrolls, keeping the DOM lightweight.
 
-*   **Initialization**: The server streams the file line-by-line.
-*   **Indexing**: It records the **Byte Offset** (position in file) of every **1,000th line**.
-    *   *Example*: Line 0 starts at byte 0. Line 1000 starts at byte 12,450.
-*   **Memory Footprint**: For 10,000,000 lines, we only store ~10,000 integers. This uses < 50KB of RAM.
-*   **Retrieval**: To get line 5,505:
-    1.  Look up the offset for line 5,000 (nearest checkpoint).
-    2.  Open a file stream starting at that byte.
-    3.  Read forward 505 lines.
-    4.  **Result**: **O(1)** access time regardless of file size.
+Constant Memory Footprint: The backend uses fs.createReadStream to read only the necessary bytes, ensuring RAM usage remains flat (~50MB) even with gigabytes of data.
 
-### 2. Frontend: Virtual "Fake Scroll" Engine
-Browsers cannot render a `div` that is 250,000,000 pixels tall (required for 10M items).
+🏗 Architecture & Engineering Decisions
 
-*   **The Problem**: Native browser limit is ~33M pixels.
-*   **The Solution**: We map a "Ghost Scrollbar" (capped at 25M pixels) to the real data.
-    *   Scroll 0% -> Data Index 0
-    *   Scroll 50% -> Data Index 5,000,000
-    *   Scroll 100% -> Data Index 10,000,000
-*   **Rendering**: Only the ~20 items visible on screen are actually rendered in the DOM.
+1. Backend: Byte-Offset Indexing
 
----
+Instead of scanning the file linearly for every request (which is $O(N)$), the backend performs a Single-Pass Indexing on startup:
 
-## 📂 Project Structure & File Utility
+Chunking: It records the byte position (offset) of every 1,000th line.
 
-### Backend (`/backend`)
-| File | Purpose |
-| :--- | :--- |
-| `src/server.ts` | **Entry Point**. Initializes the `FileIndexer` and starts the Express server. |
-| `src/indexer.ts` | **Core Logic**. Handles file streaming, byte-offset calculation, and alphabet mapping. |
-| `src/routes/users.ts` | **API Endpoint**. Handles `GET /users`. Converts query params (`skip`, `limit`) into file reads. |
-| `src/routes/alphabet.ts` | **API Endpoint**. Returns the mapping of letters to line numbers (e.g., "A" starts at line 0, "B" at 450,000). |
-| `data/usernames.txt` | **Data Source**. The read-only source of truth (not git-tracked if too large). |
+Alphabet Map: It records the exact starting line number of every letter (A-Z).
 
-### Frontend (`/frontend`)
-| File | Purpose |
-| :--- | :--- |
-| `src/services/api.ts` | **Service Layer**. Centralizes `axios` configurations for clean HTTP requests. |
-| `src/hooks/useUsers.ts` | **State Management**. Custom hook that handles data fetching, loading states, and sparse-array storage. |
-| `src/components/LargeUserList.tsx` | **Virtualization Engine**. The complex component handling "Fake Scroll" math and DOM rendering. |
-| `src/components/AlphabetSidebar.tsx` | **Navigation**. Renders the A-Z sidebar and triggers jump-to-index actions. |
-| `src/App.tsx` | **Layout**. Orchestrates the Sidebar and List components. |
+When the frontend requests "Page 500":
 
----
+The server calculates the nearest "Chunk Offset".
 
-## 🔄 System Workflow
+It opens a file stream starting exactly at that byte (fs.createReadStream({ start: ... })).
 
-1.  **Startup**: Backend scans `usernames.txt` -> Builds `lineOffsets` array in RAM.
-2.  **User Load**: Frontend requests `GET /users?skip=0&limit=50`.
-3.  **Data Fetch**: Backend checks offset for Line 0 -> Reads 50 lines -> Returns JSON.
-4.  **User Scroll**: User scrolls to 50%.
-    *   Frontend Math: `50% of 10M` = Index `5,000,000`.
-    *   Frontend Request: `GET /users?skip=5000000&limit=50`.
-    *   Backend Lookup: Jump to byte offset for line 5,000,000 -> Read -> Return.
-5.  **Render**: React updates the 50 items in the DOM instantly.
+It reads just the 50 requested lines and closes the stream.
+Result: Access time is effectively $O(1)$.
 
----
+2. Frontend: Virtualized "Window"
 
-## 🛠️ Tech Stack
+The frontend acts as a "view" into this massive dataset.
 
-*   **Frontend**: React 18, TypeScript, Tailwind CSS
-*   **Backend**: Node.js, Express, Native Streams
-*   **DevOps**: Docker, Docker Compose, Nginx
+State Management: Tracks the current skip (offset) and limit (page size).
 
----
+Intersection Observer: Detects when the user scrolls to the bottom pixel and triggers a loadMore action to append the next 50 records.
 
-## 🚀 Quick Start
+Sanity Checks: Prevents "wrap-around" bugs by validating that the requested index does not exceed the total line count.
 
-### Docker (Recommended)
+🚀 Installation & Setup
 
-1.  Clone the repository.
-2.  Run:
-    ```bash
-    docker-compose up --build
-    ```
-3.  Open **http://localhost**
+Prerequisites
 
-## 👤 Author
+Node.js (v16 or higher)
 
-**Taha**
+npm or yarn
+
+1. Clone the Repository
+
+git clone <repository-url>
+cd <project-folder>
+
+
+2. Backend Setup
+
+Navigate to the backend folder and install dependencies:
+
+cd backend
+npm install
+
+
+⚠️ IMPORTANT: Data Generation
+
+The application reads from a flat file. You must generate this file before running the server, as it is too large to be included in the Git repository.
+
+Create the data directory inside the backend folder:
+
+mkdir data
+
+
+Generate the dataset:
+Run the included script to generate a sorted file with 10 million realistic usernames.
+
+node generate_users.js
+
+
+This process will take roughly 30-60 seconds and create a file at backend/data/usernames.txt (~150MB+).
+
+3. Start the Backend Server
+
+# Run in development mode
+npm run dev
+
+# OR Build and start
+npm run build
+npm start
+
+
+The server will initialize the index (taking ~1-2 seconds) and listen on http://localhost:3000.
+
+4. Frontend Setup
+
+Open a new terminal window and navigate to the frontend folder:
+
+cd ../frontend
+npm install
+
+
+5. Start the Frontend
+
+npm run dev
+
+
+The application will launch at http://localhost:5173.
+
+🔌 API Reference
+
+The backend exposes a RESTful API to consume the indexed data.
+
+Method
+
+Endpoint
+
+Description
+
+GET
+
+/alphabet
+
+Returns a map of starting line numbers for each letter (e.g., {"A": 0, "B": 384000...}).
+
+GET
+
+/users
+
+Returns a paginated list of users.
+
+Query Parameters for /users:
+
+skip (int): The starting line index (default: 0).
+
+limit (int): Number of records to fetch (default: 50).
+
+Example Response:
+
+{
+  "users": ["Aaron Smith", "Aaron Jones", ...],
+  "meta": {
+    "totalLines": 10000000,
+    "skip": 0,
+    "limit": 50
+  }
+}
+
+
+🧪 Performance Testing
+
+To verify the system's performance limits:
+
+Ensure usernames.txt contains 10,000,000 lines (check the backend console logs on startup).
+
+Open the web app.
+
+Test 1 (Random Access): Click 'Z' in the sidebar. The jump should be instantaneous.
+
+Test 2 (Scroll Performance): Scroll down rapidly. New names should load seamlessly without lag.
+
+Test 3 (Memory): Check the Node.js process memory usage. It should remain stable (<100MB) regardless of how many requests you make.
+
+📂 Project Structure
+
+├── backend/
+│   ├── src/
+│   │   ├── indexer.ts      # Core Logic: File streaming and byte-offset mapping
+│   │   ├── server.ts       # Express server entry point
+│   │   └── app.ts          # App configuration
+│   ├── generate_users.js   # Script to generate the 10M dataset
+│   └── data/               # [User Created] Contains usernames.txt
+│
+└── frontend/
+    ├── src/
+    │   ├── components/     # UI Components (Sidebar, UserList)
+    │   ├── hooks/          # Custom Hooks (useUsers, useAlphabet)
+    │   └── services/       # API Fetching logic
+    └── tailwind.config.js  # Styling configuration

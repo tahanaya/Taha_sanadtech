@@ -1,18 +1,22 @@
 import { useState, useEffect } from 'react';
-import { api } from '../services/api';
+import { fetchAlphabet, AlphabetMap } from '../services/api';
 
 export const useAlphabet = () => {
-    const [alphabetMap, setAlphabetMap] = useState<Record<string, number>>({});
-    const [loading, setLoading] = useState(true);
+  const [alphabet, setAlphabet] = useState<AlphabetMap>({});
+  const [loading, setLoading] = useState<boolean>(true);
 
-    useEffect(() => {
-        api.getAlphabet()
-            .then(data => {
-                setAlphabetMap(data.alphabetMap);
-                setLoading(false);
-            })
-            .catch(err => console.error(err));
-    }, []);
+  useEffect(() => {
+    fetchAlphabet()
+      .then((data: AlphabetMap) => {
+        setAlphabet(data);
+      })
+      .catch((err: Error) => {
+        console.error('Error fetching alphabet:', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
 
-    return { alphabetMap, loading };
+  return { alphabet, loading };
 };

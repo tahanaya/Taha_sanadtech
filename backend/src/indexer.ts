@@ -4,6 +4,9 @@ import readline from 'readline';
 /**
  * Efficiently indexes the file by storing byte offsets for every Nth line.
  * This allows O(1) random access without loading the massive file into memory.
+ * 
+ * IMPORTANT: This indexer now tracks actual byte positions to handle files
+ * with potentially mixed line endings (some \r\n, some \n).
  */
 export class FileIndexer {
     private filePath: string;
@@ -19,57 +22,89 @@ export class FileIndexer {
     async initialize() {
         console.time('Indexing Time');
 
-        // Detect EOL char (CRLF vs LF) to ensure accurate byte offsets
-        const eolLength = await this.determineEOL();
-        console.log(`Detected EOL length: ${eolLength}`);
+        // Read file as buffer to get accurate byte positions
+        const fileHandle = await fs.promises.open(this.filePath, 'r');
+        const stats = await fileHandle.stat();
+        const fileSize = stats.size;
 
-        const stream = fs.createReadStream(this.filePath);
-        const rl = readline.createInterface({
-            input: stream,
-            crlfDelay: Infinity
-        });
+        const BUFFER_SIZE = 64 * 1024; // 64KB chunks
+        const buffer = Buffer.alloc(BUFFER_SIZE);
 
         let currentByteOffset = 0;
         let lineCount = 0;
+        let lineStart = 0;
+        let leftover = Buffer.alloc(0);
 
-        for await (const line of rl) {
-            // Store the byte offset every chunk
-            if (lineCount % this.CHUNK_SIZE === 0) {
-                this.lineOffsets.push(currentByteOffset);
+        while (currentByteOffset < fileSize) {
+            const { bytesRead } = await fileHandle.read(buffer, 0, BUFFER_SIZE, currentByteOffset);
+            if (bytesRead === 0) break;
+
+            // Combine leftover from previous chunk with current buffer
+            const chunk = Buffer.concat([leftover, buffer.subarray(0, bytesRead)]);
+            let pos = 0;
+
+            while (pos < chunk.length) {
+                const newlineIndex = chunk.indexOf(0x0A, pos); // Find \n (LF)
+
+                if (newlineIndex === -1) {
+                    // No more newlines in this chunk, save leftover
+                    leftover = chunk.subarray(pos);
+                    break;
+                }
+
+                // Calculate actual line byte offset (accounting for leftover)
+                const lineByteOffset = currentByteOffset - leftover.length + pos;
+
+                // Store the byte offset every chunk
+                if (lineCount % this.CHUNK_SIZE === 0) {
+                    this.lineOffsets.push(lineByteOffset);
+                }
+
+                // Extract the line (excluding \r\n or \n)
+                let lineEnd = newlineIndex;
+                if (lineEnd > 0 && chunk[lineEnd - 1] === 0x0D) { // Check for \r before \n
+                    lineEnd--;
+                }
+                const line = chunk.subarray(pos, lineEnd).toString('utf8');
+
+                // Map the alphabet for the side menu (use first char as-is since list is pre-sorted)
+                const firstLetter = line.trim()[0]?.toUpperCase();
+
+                if (firstLetter && /^[A-Z]$/.test(firstLetter) && this.alphabetMap[firstLetter] === undefined) {
+                    this.alphabetMap[firstLetter] = lineCount;
+                }
+
+                lineCount++;
+                pos = newlineIndex + 1;
             }
 
-            // Map the alphabet for the side menu.
-            // Strip common titles to index by the actual name (e.g. "Mr. X" -> "X")
-            let sortName = line.trim();
-            const prefixes = /^(Mr\.|Mrs\.|Ms\.|Miss|Dr\.|Prof\.|Rev\.)\s+/i;
-            sortName = sortName.replace(prefixes, '');
-            const firstLetter = sortName[0]?.toUpperCase();
+            if (pos >= chunk.length) {
+                leftover = Buffer.alloc(0);
+            }
+            currentByteOffset += bytesRead;
+        }
 
-            // Only index valid A-Z letters
+        // Handle last line if file doesn't end with newline
+        if (leftover.length > 0) {
+            const lineByteOffset = fileSize - leftover.length;
+            if (lineCount % this.CHUNK_SIZE === 0) {
+                this.lineOffsets.push(lineByteOffset);
+            }
+
+            const line = leftover.toString('utf8');
+            const firstLetter = line.trim()[0]?.toUpperCase();
+
             if (firstLetter && /^[A-Z]$/.test(firstLetter) && this.alphabetMap[firstLetter] === undefined) {
                 this.alphabetMap[firstLetter] = lineCount;
             }
-
-            // Update the byte offset for the next line
-            currentByteOffset += Buffer.byteLength(line) + eolLength;
             lineCount++;
         }
 
+        await fileHandle.close();
+
         this.totalLines = lineCount;
         console.timeEnd('Indexing Time');
-        console.log(`Indexed ${this.totalLines} lines.`);
-    }
-
-    private async determineEOL(): Promise<number> {
-        const readable = fs.createReadStream(this.filePath, { end: 1024 });
-        let chunk = '';
-        for await (const part of readable) {
-            chunk += part.toString();
-        }
-
-        if (chunk.includes('\r\n')) return 2;
-        if (chunk.includes('\n')) return 1;
-        return 1; // Default to \n if no newline found in first 1KB (unlikely for big files)
+        console.log(`Indexed ${this.totalLines} lines with ${this.lineOffsets.length} chunk offsets.`);
     }
 
     // This method allows us to "Jump" to any line instantly

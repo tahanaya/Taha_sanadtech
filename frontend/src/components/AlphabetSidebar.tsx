@@ -1,30 +1,31 @@
 import React from 'react';
-import { useAlphabet } from '../hooks/useAlphabet';
+import { AlphabetMap } from '../services/api';
 
 interface AlphabetSidebarProps {
-    onJump: (index: number) => void;
+  alphabet: AlphabetMap;
+  onLetterClick: (skip: number) => void;
+  currentSkip: number;
 }
 
-export const AlphabetSidebar: React.FC<AlphabetSidebarProps> = ({ onJump }) => {
-    const { alphabetMap, loading } = useAlphabet();
+const AlphabetSidebar: React.FC<AlphabetSidebarProps> = ({ 
+  alphabet, 
+  onLetterClick 
+}) => {
+  const letters = Object.keys(alphabet).sort();
 
-
-    if (loading) return null;
-
-    const letters = Object.keys(alphabetMap).sort();
-
-    return (
-        <div className="w-12 bg-gray-900 border-r border-gray-800 flex flex-col items-center py-4 overflow-y-auto h-full scrollbar-hide">
-            {letters.map(letter => (
-                <button
-                    key={letter}
-                    onClick={() => onJump(alphabetMap[letter])}
-                    className="w-8 h-8 flex items-center justify-center text-xs font-bold text-gray-400 hover:text-white hover:bg-blue-600 rounded-full mb-1 transition-colors"
-                    title={`Jump to ${letter}`}
-                >
-                    {letter}
-                </button>
-            ))}
-        </div>
-    );
+  return (
+    <aside className="w-12 bg-gray-100 border-r border-gray-300 flex flex-col items-center py-2 overflow-y-auto h-full">
+      {letters.map((letter) => (
+        <button
+          key={letter}
+          onClick={() => onLetterClick(alphabet[letter])}
+          className="w-full py-1 text-xs font-bold text-gray-600 hover:text-blue-600 hover:bg-gray-200 transition-colors uppercase"
+        >
+          {letter}
+        </button>
+      ))}
+    </aside>
+  );
 };
+
+export default AlphabetSidebar;

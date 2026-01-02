@@ -1,14 +1,19 @@
+/* src/index.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  /* Force light mode base */
+  color-scheme: light; 
 }
 
 body {
   margin: 0;
-  min-width: 320px;
+  /* Use a nice neutral font */
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Ensure the body takes full height so our flex layout works */
   min-height: 100vh;
-  background-color: #0f172a; /* slate-900 */
 }
