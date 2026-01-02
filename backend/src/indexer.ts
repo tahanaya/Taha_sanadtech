@@ -2,11 +2,9 @@ import fs from 'fs';
 import readline from 'readline';
 
 /**
- * Efficiently indexes the file by storing byte offsets for every Nth line.
- * This allows O(1) random access without loading the massive file into memory.
- * 
- * IMPORTANT: This indexer now tracks actual byte positions to handle files
- * with potentially mixed line endings (some \r\n, some \n).
+ * Indexes a newline-delimited file by storing byte offsets at regular intervals.
+ * Allows fast random access without loading the whole file into memory.
+ * Handles mixed line endings correctly by tracking byte positions.
  */
 export class FileIndexer {
     private filePath: string;
@@ -107,7 +105,7 @@ export class FileIndexer {
         console.log(`Indexed ${this.totalLines} lines with ${this.lineOffsets.length} chunk offsets.`);
     }
 
-    // This method allows us to "Jump" to any line instantly
+    // Read `limit` lines starting at `startLine` using the nearest checkpoint
     async getLines(startLine: number, limit: number): Promise<string[]> {
         const result: string[] = [];
         const indexInMap = Math.floor(startLine / this.CHUNK_SIZE);

@@ -22,7 +22,7 @@ function App() {
         {/* Simple Header */}
         <header className="h-14 border-b border-gray-300 flex items-center justify-between px-6 bg-gray-50">
           <div>
-            <h1 className="text-lg font-bold">User displaying By Taha</h1>
+            <h1 className="text-lg font-bold">Users displaying By Taha</h1>
             <p className="text-xs text-gray-500">
               {users.length.toLocaleString()} / {totalLines.toLocaleString()} loaded
             </p>

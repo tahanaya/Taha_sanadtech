@@ -27,26 +27,24 @@ function getRandomSuffix(length) {
   return suffix;
 }
 
-// Function to generate a batch of names starting with a specific letter
+// Generate `count` names starting with `startLetter`
 function generateBatch(startLetter, count) {
   const batch = [];
   for (let i = 0; i < count; i++) {
-    // Construct a name: "A" + "random" + " " + "LastName"
-    // Example: "Aaron Smith", "Abel Jones"
-    // We add a random suffix to the first name to ensure uniqueness and sorting variety
+    // Make a semi-random first name and pair with a random last name
     const firstName = startLetter + getRandomSuffix(Math.floor(Math.random() * 5) + 3); 
     const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
     const fullName = `${firstName.charAt(0).toUpperCase() + firstName.slice(1)} ${lastName}`;
     batch.push(fullName);
   }
-  return batch.sort(); // Crucial: Sort this batch before writing!
+  return batch.sort(); // keep batch sorted before writing
 }
 
 async function main() {
   console.time('Generation Time');
   console.log(`🚀 Starting generation of ${TOTAL_TARGET.toLocaleString()} users...`);
 
-  // Ensure directory exists
+  // Create output directory if missing
   const dir = path.dirname(OUTPUT_FILE);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
@@ -61,12 +59,12 @@ async function main() {
 
     const batch = generateBatch(letter, BATCH_SIZE);
     
-    // Check if stream can write, otherwise wait for drain (Backpressure handling)
+    // write batch and wait for drain if needed
     const canWrite = stream.write(batch.join('\n') + '\n');
     
     totalWritten += batch.length;
     
-    // Force Garbage Collection hint (optional, but good for heavy scripts)
+    // Optional: hint GC for long-running generation scripts
     if (global.gc) global.gc();
 
     if (!canWrite) {
