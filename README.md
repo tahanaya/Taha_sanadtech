@@ -58,7 +58,7 @@ Prerequisites:
 Clone and install:
 
 ```powershell
-git clone <repository-url>
+git clone https://github.com/tahanaya/Taha_sanadtech.git
 cd Taha_sanadtech
 ```
 
@@ -79,12 +79,7 @@ mkdir data
 Start backend:
 
 ```powershell
-# development
-npm run dev
-
-# or build + start
-npm run build
-npm start
+npx ts-node src/server.ts
 ```
 
 The server will initialize the index on first startup and listen at http://localhost:3000 by default.
@@ -148,12 +143,6 @@ Example /users response:
 
 ---
 
-## Contributing
 
-Feel free to open issues or PRs. If you add large dataset tests, document sample file generation and any configuration options.
 
----
 
-## License
-
-MIT — see `LICENSE` if present.
